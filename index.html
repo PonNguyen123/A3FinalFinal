@@ -1,0 +1,517 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PetNourish – GPS Routing MVP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Flying Leaves Background -->
+  <div class="leaf-layer" aria-hidden="true">
+    <span class="leaf">🍃</span><span class="leaf">🍂</span><span class="leaf">🍁</span><span class="leaf">🍃</span>
+    <span class="leaf">🍂</span><span class="leaf">🍁</span><span class="leaf">🍃</span><span class="leaf">🍂</span>
+    <span class="leaf">🍁</span><span class="leaf">🍃</span><span class="leaf">🍂</span><span class="leaf">🍁</span>
+    <span class="leaf">🍃</span><span class="leaf">🍂</span><span class="leaf">🍁</span><span class="leaf">🍃</span>
+  </div>
+
+  <!-- GPS Permission Modal -->
+  <div class="modal modal--show" id="gps-modal" role="dialog" aria-modal="true" aria-labelledby="gps-title">
+    <div class="modal-card">
+      <div class="modal-emoji">📍</div>
+      <h2 id="gps-title">Enable GPS to find pet services near you</h2>
+      <p class="modal-sub">
+        PetNourish uses your location to show the closest <b>Pet Food Stores</b> and <b>Animal Hospitals</b>, and create real routes.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-use-demo" type="button">Use Demo Location</button>
+        <button class="btn btn-primary" id="btn-enable-gps" type="button">Enable GPS</button>
+      </div>
+      <p class="modal-hint">Tip: If your browser blocks GPS, click the 🔒 icon near the address bar.</p>
+    </div>
+  </div>
+
+  <!-- Onboarding Tour Overlay -->
+  <div class="tour tour--hidden" id="tour">
+    <div class="tour-dim"></div>
+    <div class="tour-card" id="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+      <div class="tour-top">
+        <div class="tour-emoji" id="tour-emoji">✨</div>
+        <button class="tour-skip" id="tour-skip" type="button">Skip</button>
+      </div>
+      <h3 class="tour-title" id="tour-title">Welcome to PetNourish</h3>
+      <p class="tour-text" id="tour-text">We’ll quickly show you the map, routing, and emergency mode.</p>
+      <div class="tour-actions">
+        <button class="btn btn-secondary" id="tour-back" type="button">Back</button>
+        <button class="btn btn-primary" id="tour-next" type="button">Next</button>
+      </div>
+      <div class="tour-dots" id="tour-dots" aria-hidden="true"></div>
+    </div>
+    <div class="tour-highlight" id="tour-highlight" aria-hidden="true"></div>
+  </div>
+
+  <div class="app-shell">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-circle"><span class="logo-paw">🐾</span></div>
+        <div class="brand-text">
+          <h1>PetNourish</h1>
+          <p>GPS Routing MVP</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode">
+          <span class="theme-toggle__icon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="top-tabs">
+      <button class="tab-btn tab-btn--active" id="tab-map" type="button">🗺️ Map & GPS</button>
+      <button class="tab-btn" id="tab-food" type="button">🍽️ Food & Price</button>
+      <button class="tab-btn" id="tab-care" type="button">🏥 Care Help</button>
+      <button class="tab-btn" id="tab-nearby" type="button">📍 Nearby</button>
+      <button class="tab-btn" id="tab-traffic" type="button">🚦 Traffic</button>
+
+      <!-- NEW tabs -->
+      <button class="tab-btn" id="tab-saved" type="button">⭐ Saved</button>
+      <button class="tab-btn" id="tab-compare" type="button">📊 Compare</button>
+      <button class="tab-btn" id="tab-basket" type="button">🧺 Basket</button>
+      <button class="tab-btn" id="tab-alerts" type="button">🔔 Alerts</button>
+    </nav>
+
+    <main class="app-main--single">
+
+      <!-- MAP VIEW -->
+      <section class="view view--active" id="view-map">
+        <div class="map-wrap">
+
+          <button class="map-back-btn" id="btn-map-back" type="button">⬅ Back</button>
+
+          <div id="map" class="map-canvas"></div>
+
+          <!-- Floating Buttons -->
+          <div class="map-fab-stack">
+            <button class="map-fab" id="btn-my-location" type="button" title="My location">🎯</button>
+            <button class="map-fab" id="btn-fullscreen" type="button" title="Fullscreen">⤢</button>
+          </div>
+
+          <!-- Emergency Mode -->
+          <button class="emergency-btn" id="btn-emergency" type="button" title="Emergency: nearest hospital">
+            🚨 Emergency
+          </button>
+
+          <!-- Bottom Sheet -->
+          <div class="bottom-sheet" id="bottom-sheet">
+            <div class="sheet-grab"></div>
+
+            <div class="sheet-head" id="sheet-header">
+              <div>
+                <h3 class="sheet-title">Where you wanna go?</h3>
+                <p class="sheet-sub" id="sheet-sub">GPS routing + nearest shop & hospital</p>
+              </div>
+              <div class="sheet-actions">
+                <button class="btn btn-secondary" id="btn-clear-route" type="button">Clear</button>
+              </div>
+            </div>
+
+            <div class="sheet-body">
+
+              <!-- Destination search with suggestions -->
+              <div class="search-row">
+                <div class="input-wrap">
+                  <input id="dest-input" type="text" placeholder="Search a destination (e.g. Ben Thanh Market)" autocomplete="off" />
+                  <div class="suggestions" id="dest-suggestions" role="listbox" aria-label="Destination suggestions"></div>
+                </div>
+
+                <button class="btn btn-primary" id="btn-start-route" type="button">
+                  <span class="btn-text">Route</span>
+                  <span class="btn-spin" aria-hidden="true"></span>
+                </button>
+              </div>
+
+              <!-- Multi-stop route builder -->
+              <div class="stop-builder" id="stop-builder">
+                <div class="stop-head">
+                  <div class="stop-title">Multi-stop route</div>
+                  <div class="stop-actions">
+                    <button class="btn btn-secondary btn-sm" id="btn-add-stop" type="button">+ Add stop</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-clear-stops" type="button">Reset</button>
+                  </div>
+                </div>
+
+                <div class="stop-list" id="stop-list">
+                  <!-- JS inject stop chips/rows -->
+                </div>
+
+                <div class="stop-footer">
+                  <button class="btn btn-primary" id="btn-start-trip" type="button">
+                    <span class="btn-text">Start Trip (Shop → Hospital → Home)</span>
+                    <span class="btn-spin" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Quick actions -->
+              <div class="quick-row">
+                <button class="chip" id="chip-nearest-shop" type="button">🛒 Nearest shop</button>
+                <button class="chip" id="chip-nearest-hospital" type="button">🏥 Nearest hospital</button>
+                <button class="chip" id="chip-home" type="button">🏠 Home</button>
+                <button class="chip" id="chip-ben-thanh" type="button">📌 Ben Thanh</button>
+              </div>
+
+              <!-- Traffic time-of-day -->
+              <div class="traffic-controls">
+                <div class="traffic-label">Traffic time</div>
+                <div class="traffic-pills" role="group" aria-label="Traffic time-of-day">
+                  <button class="pill-btn pill-btn--active" id="traffic-morning" type="button">Morning</button>
+                  <button class="pill-btn" id="traffic-noon" type="button">Noon</button>
+                  <button class="pill-btn" id="traffic-night" type="button">Night</button>
+                </div>
+              </div>
+
+              <div class="legend-row">
+                <div class="legend-item"><span class="dot dot-blue"></span> User → Destination (Blue)</div>
+                <div class="legend-item"><span class="dot dot-red"></span> User → Services (Red)</div>
+                <div class="legend-item"><span class="dot dot-yellow"></span> Traffic layer (Yellow under)</div>
+              </div>
+
+              <div class="mini-status">
+                <span class="status-pill">Status: <b id="status-text">Waiting for GPS</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Store Details Drawer -->
+          <div class="drawer" id="store-drawer" aria-hidden="true">
+            <div class="drawer-grab" id="drawer-grab"></div>
+
+            <div class="drawer-head">
+              <div>
+                <h3 class="drawer-title" id="drawer-title">Store Name</h3>
+                <p class="drawer-sub" id="drawer-sub">Distance • Items</p>
+              </div>
+
+              <div class="drawer-head-actions">
+                <button class="drawer-fav" id="drawer-fav" type="button" title="Save place">⭐</button>
+                <button class="drawer-close" id="drawer-close" type="button" aria-label="Close drawer">✕</button>
+              </div>
+            </div>
+
+            <div class="drawer-body" id="drawer-body"></div>
+
+            <div class="drawer-actions">
+              <button class="btn btn-secondary" id="drawer-route-red" type="button">Red (Nearest)</button>
+              <button class="btn btn-primary" id="drawer-route-blue" type="button">Blue (To Store)</button>
+            </div>
+          </div>
+
+          <!-- Place Details Drawer (Hospitals too) -->
+          <div class="drawer" id="place-drawer" aria-hidden="true">
+            <div class="drawer-grab" id="place-grab"></div>
+
+            <div class="drawer-head">
+              <div>
+                <h3 class="drawer-title" id="place-title">Place Name</h3>
+                <p class="drawer-sub" id="place-sub">Open status • distance</p>
+              </div>
+
+              <div class="drawer-head-actions">
+                <button class="drawer-fav" id="place-fav" type="button" title="Save place">⭐</button>
+                <button class="drawer-close" id="place-close" type="button" aria-label="Close drawer">✕</button>
+              </div>
+            </div>
+
+            <div class="drawer-body" id="place-body">
+              <!-- JS inject open hours + actions -->
+            </div>
+
+            <div class="drawer-actions">
+              <button class="btn btn-secondary" id="place-route-red" type="button">Red (Nearest)</button>
+              <button class="btn btn-primary" id="place-route-blue" type="button">Blue (Route here)</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- FOOD VIEW -->
+      <section class="view" id="view-food">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Pet Food & Prices</h2>
+              <p class="subtitle">Demo database (HCMC) • Add to basket • Set alerts</p>
+            </div>
+            <div class="pill">🧾 MVP</div>
+          </div>
+
+          <div class="food-controls">
+            <input id="food-search" type="text" placeholder="Search item / store / description..." />
+            <select id="food-category">
+              <option value="any">All Categories</option>
+            </select>
+          </div>
+
+          <div class="food-grid" id="food-grid"></div>
+        </section>
+      </section>
+
+      <!-- CARE VIEW -->
+      <section class="view" id="view-care">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Care Help</h2>
+              <p class="subtitle">Animal hospitals • open status • route</p>
+            </div>
+            <div class="pill">🏥</div>
+          </div>
+
+          <div class="care-grid" id="care-grid"></div>
+        </section>
+      </section>
+
+      <!-- NEARBY VIEW -->
+      <section class="view" id="view-nearby">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Nearby Places</h2>
+              <p class="subtitle">Closest stores & hospitals from your GPS</p>
+            </div>
+            <div class="pill">📍</div>
+          </div>
+
+          <div class="food-controls">
+            <select id="nearby-type">
+              <option value="all">All</option>
+              <option value="store">Stores</option>
+              <option value="hospital">Hospitals</option>
+            </select>
+
+            <select id="nearby-sort">
+              <option value="distance">Sort: Distance</option>
+              <option value="name">Sort: Name</option>
+              <option value="open">Sort: Open now</option>
+            </select>
+          </div>
+
+          <div class="care-grid" id="nearby-grid"></div>
+        </section>
+      </section>
+
+      <!-- TRAFFIC VIEW -->
+      <section class="view" id="view-traffic">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Traffic Report (Demo)</h2>
+              <p class="subtitle">Yellow corridor = traffic status layer under routes</p>
+            </div>
+            <div class="pill">🚦</div>
+          </div>
+
+          <div class="care-grid">
+            <div class="care-card">
+              <div class="care-title">Time-of-day</div>
+              <div class="care-sub">Switch traffic context and regenerate the corridor.</div>
+
+              <div class="traffic-pills traffic-pills--big" role="group" aria-label="Traffic time-of-day">
+                <button class="pill-btn pill-btn--active" id="traffic-morning-2" type="button">Morning</button>
+                <button class="pill-btn" id="traffic-noon-2" type="button">Noon</button>
+                <button class="pill-btn" id="traffic-night-2" type="button">Night</button>
+              </div>
+
+              <div class="care-sub" id="traffic-status-text">No route yet.</div>
+              <button class="btn btn-primary" id="btn-reroll-traffic" type="button">Regenerate Traffic Layer</button>
+            </div>
+
+            <div class="care-card">
+              <div class="care-title">Legend</div>
+              <div class="care-sub">
+                <b>Morning:</b> commuting peak • <b>Noon:</b> medium load • <b>Night:</b> faster flow (demo).
+              </div>
+              <div class="care-sub">
+                Yellow layer is drawn <b>under</b> routes to simulate congestion corridor and support your report narrative.
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- SAVED VIEW -->
+      <section class="view" id="view-saved">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Saved Places</h2>
+              <p class="subtitle">Favorites stored locally (LocalStorage)</p>
+            </div>
+            <div class="pill">⭐</div>
+          </div>
+
+          <div class="food-controls">
+            <select id="saved-filter">
+              <option value="all">All</option>
+              <option value="store">Stores</option>
+              <option value="hospital">Hospitals</option>
+            </select>
+            <button class="btn btn-secondary" id="btn-clear-saved" type="button">Clear saved</button>
+          </div>
+
+          <div class="care-grid" id="saved-grid">
+            <!-- JS inject saved cards -->
+          </div>
+        </section>
+      </section>
+
+      <!-- COMPARE VIEW -->
+      <section class="view" id="view-compare">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Price Comparison</h2>
+              <p class="subtitle">Pick an item → see cheapest store → route there</p>
+            </div>
+            <div class="pill">📊</div>
+          </div>
+
+          <div class="compare-controls">
+            <div class="input-wrap">
+              <input id="compare-input" type="text" placeholder="Type item name (e.g. Royal Canin Medium Adult)" autocomplete="off" />
+              <div class="suggestions" id="compare-suggestions" role="listbox" aria-label="Item suggestions"></div>
+            </div>
+            <button class="btn btn-primary" id="btn-compare" type="button">Compare</button>
+          </div>
+
+          <div class="compare-table-wrap">
+            <table class="compare-table" id="compare-table">
+              <thead>
+                <tr>
+                  <th>Store</th>
+                  <th>Price</th>
+                  <th>Open</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="compare-tbody">
+                <tr>
+                  <td colspan="4" class="empty-cell">Type an item to compare.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="compare-footer">
+            <button class="btn btn-secondary" id="btn-route-cheapest" type="button">Route to Cheapest</button>
+            <button class="btn btn-secondary" id="btn-save-cheapest" type="button">⭐ Save Cheapest Store</button>
+          </div>
+        </section>
+      </section>
+
+      <!-- BASKET VIEW -->
+      <section class="view" id="view-basket">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Your Basket</h2>
+              <p class="subtitle">Total cost • best store suggestion • route</p>
+            </div>
+            <div class="pill">🧺</div>
+          </div>
+
+          <div class="basket-grid">
+            <div class="basket-left">
+              <div class="basket-list" id="basket-list">
+                <div class="empty-state">Your basket is empty.</div>
+              </div>
+
+              <div class="basket-actions">
+                <button class="btn btn-secondary" id="btn-clear-basket" type="button">Clear basket</button>
+              </div>
+            </div>
+
+            <div class="basket-right">
+              <div class="summary-card">
+                <div class="summary-title">Summary</div>
+                <div class="summary-row">
+                  <span>Items</span>
+                  <b id="basket-count">0</b>
+                </div>
+                <div class="summary-row">
+                  <span>Total</span>
+                  <b id="basket-total">0₫</b>
+                </div>
+
+                <div class="summary-title" style="margin-top:12px;">Suggested store</div>
+                <div class="summary-sub" id="basket-suggested">Add items to get a recommendation.</div>
+
+                <div class="summary-actions">
+                  <button class="btn btn-primary" id="btn-route-best-basket" type="button">Route to Best Store</button>
+                  <button class="btn btn-secondary" id="btn-save-best-basket" type="button">⭐ Save Store</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ALERTS VIEW -->
+      <section class="view" id="view-alerts">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Price Alerts (Demo)</h2>
+              <p class="subtitle">Set a rule → simulate update → toast notification</p>
+            </div>
+            <div class="pill">🔔</div>
+          </div>
+
+          <div class="alerts-controls">
+            <div class="input-wrap">
+              <input id="alert-item" type="text" placeholder="Item name (e.g. Whiskas Tuna Can)" autocomplete="off" />
+              <div class="suggestions" id="alert-suggestions" role="listbox" aria-label="Alert item suggestions"></div>
+            </div>
+
+            <div class="alert-row">
+              <label class="mini-label" for="alert-price">Notify me if price is below</label>
+              <input id="alert-price" type="number" min="0" step="1000" placeholder="30000" />
+            </div>
+
+            <div class="alert-actions">
+              <button class="btn btn-primary" id="btn-add-alert" type="button">Add Alert</button>
+              <button class="btn btn-secondary" id="btn-simulate-update" type="button">Simulate Update</button>
+            </div>
+          </div>
+
+          <div class="care-grid" id="alerts-grid">
+            <div class="care-card">
+              <div class="care-title">Your alerts</div>
+              <div class="care-sub">No alerts yet. Add one above.</div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="script.js"></script>
+</body>
+</html>
